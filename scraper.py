@@ -16,11 +16,11 @@ HEADERS = {
 }
 
 
-def page_text(html):
-    return BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
+# ---------------------------------------------------------
+# General helpers
+# ---------------------------------------------------------
 
-
-def get_page(url):
+def get_html(url):
     response = requests.get(
         url,
         headers=HEADERS,
@@ -30,68 +30,82 @@ def get_page(url):
     return response.text
 
 
-def find_tier_price(html):
-    """
-    Find a 100-299 gallon price.
-    Handles:
-      100 - 299 Gallons $5.09
-      100–299 Gallons $5.09
-      100-299 Gallons: $5.09
-    """
-    text = page_text(html)
+def clean_text(value):
+    return re.sub(r"\s+", " ", value).strip()
 
-    pattern = (
-        r"100\s*[-–—]\s*299\s*"
-        r"(?:gallons?|gal)"
-        r".{0,150}?"
-        r"\$\s*([0-9]+\.[0-9]{2,3})"
-    )
 
-    match = re.search(pattern, text, re.IGNORECASE)
-
-    if match:
-        return float(match.group(1))
-
-    return None
-
+# ---------------------------------------------------------
+# First Fuel
+# ---------------------------------------------------------
 
 def first_fuel():
-    html = get_page("https://www.firstfueloil.com/")
-    price = find_tier_price(html)
+    html = get_html("https://www.firstfueloil.com/")
+    soup = BeautifulSoup(html, "html.parser")
 
-    if price is None:
-        raise RuntimeError("Could not find First Fuel 100-299 price")
+    text = clean_text(soup.get_text(" ", strip=True))
 
-    return price, "Published 100-299 gallon price"
+    patterns = [
+        r"100\s*[-–—]\s*299\s*Gallons?.{0,150}?\$\s*(\d+\.\d{2,3})",
+        r"100\s*[-–—]\s*299.{0,150}?\$\s*(\d+\.\d{2,3})",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text, re.I)
+        if match:
+            return float(match.group(1)), "Published 100-299 gallon price"
+
+    raise RuntimeError("Could not find First Fuel price")
 
 
-def incredible_oil():
-    html = get_page(
-        "https://www.incredibleoil.com/home-heating-oil/"
+# ---------------------------------------------------------
+# Phillips
+# ---------------------------------------------------------
+
+def phillips():
+    html = get_html("https://phillipsoilllc.com/")
+    soup = BeautifulSoup(html, "html.parser")
+
+    # Look through every table.
+    for table in soup.find_all("table"):
+        rows = table.find_all("tr")
+
+        for row in rows:
+            cells = [
+                clean_text(cell.get_text(" ", strip=True))
+                for cell in row.find_all(["td", "th"])
+            ]
+
+            if not cells:
+                continue
+
+            # We want the row beginning with 100.
+            if cells[0].strip() == "100":
+
+                # Expected:
+                # 100 | $5.390 | $539.00
+                for cell in cells[1:]:
+                    match = re.search(
+                        r"\$\s*(\d+\.\d{2,3})",
+                        cell
+                    )
+
+                    if match:
+                        return (
+                            float(match.group(1)),
+                            "Published 100-gallon price"
+                        )
+
+    raise RuntimeError(
+        "Could not find Phillips 100-gallon price"
     )
-    price = find_tier_price(html)
-
-    if price is None:
-        raise RuntimeError(
-            "Could not find Incredible Oil 100-299 price"
-        )
-
-    return price, "Published 100-299 gallon price"
 
 
-def interactive_quote(url):
-    """
-    Uses the supplier's public quote form.
+# ---------------------------------------------------------
+# Curtiss
+# ---------------------------------------------------------
 
-    Enters ZIP 06712 and attempts to select/request
-    100 gallons.
-
-    It does NOT:
-      - enter personal information
-      - enter payment information
-      - place an order
-      - proceed through checkout
-    """
+def curtiss():
+    url = "https://curtissoil.com/get-price/"
 
     with sync_playwright() as p:
 
@@ -106,7 +120,7 @@ def interactive_quote(url):
         page = browser.new_page(
             viewport={
                 "width": 1440,
-                "height": 1000
+                "height": 1200
             }
         )
 
@@ -118,9 +132,12 @@ def interactive_quote(url):
                 timeout=60000
             )
 
-            page.wait_for_timeout(3000)
+            page.wait_for_timeout(5000)
 
+            # -------------------------------------------------
             # Find ZIP input
+            # -------------------------------------------------
+
             zip_selectors = [
                 'input[name*="zip" i]',
                 'input[id*="zip" i]',
@@ -131,6 +148,7 @@ def interactive_quote(url):
             zip_box = None
 
             for selector in zip_selectors:
+
                 locator = page.locator(selector)
 
                 if locator.count() > 0:
@@ -138,13 +156,15 @@ def interactive_quote(url):
                     break
 
             if zip_box is None:
-                browser.close()
-                return None, "ZIP input not found"
+                raise RuntimeError("ZIP input not found")
 
             zip_box.fill(ZIP)
 
-            # Find Check Price button
-            button_selectors = [
+            # -------------------------------------------------
+            # Click Check Price
+            # -------------------------------------------------
+
+            check_selectors = [
                 'button:has-text("Check Price")',
                 'input[type="submit"]',
                 'button:has-text("Check")',
@@ -153,7 +173,8 @@ def interactive_quote(url):
 
             check_button = None
 
-            for selector in button_selectors:
+            for selector in check_selectors:
+
                 locator = page.locator(selector)
 
                 if locator.count() > 0:
@@ -161,81 +182,45 @@ def interactive_quote(url):
                     break
 
             if check_button is None:
-                browser.close()
-                return None, "Check Price button not found"
+                raise RuntimeError(
+                    "Check Price button not found"
+                )
 
             check_button.click()
 
-            # Give the quote application time to load
-            page.wait_for_timeout(5000)
+            # Give the quote application time to update.
+            page.wait_for_timeout(8000)
 
-            # Try to find a gallon quantity field
-            gallon_selectors = [
-                'input[name*="gallon" i]',
-                'input[id*="gallon" i]',
-                'input[placeholder*="gallon" i]',
-            ]
+            # -------------------------------------------------
+            # Get all visible text
+            # -------------------------------------------------
 
-            gallon_box = None
-
-            for selector in gallon_selectors:
-                locator = page.locator(selector)
-
-                if locator.count() > 0:
-                    gallon_box = locator.first
-                    break
-
-            if gallon_box is not None:
-                try:
-                    gallon_box.fill(str(GALLONS))
-                    page.wait_for_timeout(2000)
-                except Exception:
-                    pass
-
-            # Try obvious 100-gallon buttons/options
-            quantity_selectors = [
-                'label:has-text("100")',
-                'button:has-text("100")',
-                '[role="button"]:has-text("100")',
-            ]
-
-            for selector in quantity_selectors:
-
-                locator = page.locator(selector)
-
-                if locator.count() > 0:
-
-                    try:
-                        locator.first.click(timeout=2000)
-                        page.wait_for_timeout(2000)
-                        break
-                    except Exception:
-                        pass
-
-            # Read everything visible on the page
             body = page.locator("body").inner_text(
-                timeout=10000
+                timeout=15000
             )
 
-            # Patterns for per-gallon pricing
+            body = clean_text(body)
+
+            # -------------------------------------------------
+            # Try to find a 100-gallon row
+            # -------------------------------------------------
+
             patterns = [
 
-                # 100-199 gallons $5.19
-                r"100\s*[-–—]\s*199\s*"
-                r"(?:gallons?|gal)"
-                r".{0,150}?"
-                r"\$\s*([0-9]+\.[0-9]{2,3})",
-
-                # 100-299 gallons $5.19
-                r"100\s*[-–—]\s*299\s*"
-                r"(?:gallons?|gal)"
-                r".{0,150}?"
-                r"\$\s*([0-9]+\.[0-9]{2,3})",
-
-                # 100 gallons $5.19
+                # 100 gallons $5.XX
                 r"\b100\s*(?:gallons?|gal)\b"
-                r".{0,150}?"
-                r"\$\s*([0-9]+\.[0-9]{2,3})",
+                r".{0,200}?"
+                r"\$\s*(\d+\.\d{2,3})",
+
+                # 100 - 199 gallons $5.XX
+                r"\b100\s*[-–—]\s*199\b"
+                r".{0,200}?"
+                r"\$\s*(\d+\.\d{2,3})",
+
+                # 100 - 299 gallons $5.XX
+                r"\b100\s*[-–—]\s*299\b"
+                r".{0,200}?"
+                r"\$\s*(\d+\.\d{2,3})",
             ]
 
             for pattern in patterns:
@@ -243,7 +228,7 @@ def interactive_quote(url):
                 match = re.search(
                     pattern,
                     body,
-                    re.IGNORECASE | re.DOTALL
+                    re.I
                 )
 
                 if match:
@@ -254,50 +239,72 @@ def interactive_quote(url):
 
                     return (
                         price,
-                        "ZIP-specific interactive quote"
+                        "ZIP-specific 100-gallon price"
                     )
 
-            # Sometimes the site shows a total instead.
-            total_patterns = [
+            # -------------------------------------------------
+            # Look through HTML tables
+            # -------------------------------------------------
 
-                r"100\s*(?:gallons?|gal)"
-                r".{0,250}?"
-                r"total"
-                r".{0,100}?"
-                r"\$\s*([0-9]+(?:\.[0-9]{1,2})?)",
+            for table in page.locator("table").all():
 
-                r"\$\s*([0-9]+(?:\.[0-9]{1,2})?)"
-                r".{0,100}?"
-                r"(?:for|/)"
-                r".{0,30}?"
-                r"100\s*(?:gallons?|gal)",
-            ]
+                rows = table.locator("tr").all()
 
-            for pattern in total_patterns:
+                for row in rows:
 
-                match = re.search(
-                    pattern,
-                    body,
-                    re.IGNORECASE | re.DOTALL
-                )
+                    cells = row.locator(
+                        "th, td"
+                    ).all_inner_texts()
 
-                if match:
+                    cells = [
+                        clean_text(x)
+                        for x in cells
+                    ]
 
-                    total = float(match.group(1))
-                    price = round(total / 100, 3)
+                    if not cells:
+                        continue
 
-                    browser.close()
+                    if cells[0] == "100":
 
-                    return (
-                        price,
-                        "ZIP-specific quote; total converted"
-                    )
+                        for cell in cells[1:]:
+
+                            match = re.search(
+                                r"\$\s*(\d+\.\d{2,3})",
+                                cell
+                            )
+
+                            if match:
+
+                                price = float(
+                                    match.group(1)
+                                )
+
+                                browser.close()
+
+                                return (
+                                    price,
+                                    "ZIP-specific 100-gallon price"
+                                )
+
+            # -------------------------------------------------
+            # Diagnostic information
+            # -------------------------------------------------
+
+            print(
+                "\n----- CURTISS PAGE TEXT -----\n"
+            )
+
+            print(body[:12000])
+
+            print(
+                "\n----- END CURTISS PAGE TEXT -----\n"
+            )
 
             browser.close()
 
             return (
                 None,
-                "ZIP accepted, but no 100-gallon price was exposed"
+                "ZIP accepted, but 100-gallon price was not found"
             )
 
         except Exception as error:
@@ -309,12 +316,61 @@ def interactive_quote(url):
 
             return (
                 None,
-                "Interactive quote failed: "
+                "Curtiss quote failed: "
                 + type(error).__name__
+                + ": "
+                + str(error)[:200]
             )
 
 
-def run_supplier(name, url, mode, function=None):
+# ---------------------------------------------------------
+# Incredible Oil
+# ---------------------------------------------------------
+
+def incredible_oil():
+    html = get_html(
+        "https://www.incredibleoil.com/home-heating-oil/"
+    )
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    text = clean_text(
+        soup.get_text(" ", strip=True)
+    )
+
+    patterns = [
+        r"100\s*[-–—]\s*299\s*Gallons?.{0,150}?\$\s*(\d+\.\d{2,3})",
+        r"100\s*[-–—]\s*299.{0,150}?\$\s*(\d+\.\d{2,3})",
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(
+            pattern,
+            text,
+            re.I
+        )
+
+        if match:
+            return (
+                float(match.group(1)),
+                "Published 100-299 gallon price"
+            )
+
+    raise RuntimeError(
+        "Could not find Incredible Oil price"
+    )
+
+
+# ---------------------------------------------------------
+# Supplier wrapper
+# ---------------------------------------------------------
+
+def run_supplier(
+    name,
+    url,
+    function
+):
 
     result = {
         "name": name,
@@ -325,17 +381,12 @@ def run_supplier(name, url, mode, function=None):
 
     try:
 
-        if mode == "public":
-            price, note = function()
+        price, note = function()
 
-        else:
-            price, note = interactive_quote(url)
-
-        if price is not None:
-            result["price_per_gallon"] = round(
-                price,
-                3
-            )
+        result["price_per_gallon"] = round(
+            price,
+            3
+        )
 
         result["note"] = note
 
@@ -345,11 +396,15 @@ def run_supplier(name, url, mode, function=None):
             "Update failed: "
             + type(error).__name__
             + ": "
-            + str(error)[:120]
+            + str(error)[:200]
         )
 
     return result
 
+
+# ---------------------------------------------------------
+# Main
+# ---------------------------------------------------------
 
 def main():
 
@@ -358,26 +413,24 @@ def main():
         run_supplier(
             "First Fuel Oil",
             "https://www.firstfueloil.com/",
-            "public",
             first_fuel
         ),
 
         run_supplier(
             "Phillips Oil & Propane",
-            "https://phillipsoilllc.com/get-price/",
-            "interactive"
+            "https://phillipsoilllc.com/",
+            phillips
         ),
 
         run_supplier(
             "Curtiss Oil",
             "https://curtissoil.com/get-price/",
-            "interactive"
+            curtiss
         ),
 
         run_supplier(
             "Incredible Oil & Propane",
             "https://www.incredibleoil.com/home-heating-oil/",
-            "public",
             incredible_oil
         ),
     ]
