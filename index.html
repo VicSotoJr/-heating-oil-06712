@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>06712 Heating Oil Prices</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--text:#17202a;--muted:#667085;--line:#e4e7ec;--accent:#1d4ed8;--good:#087443;--bad:#b42318}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif}
+.wrap{max-width:1100px;margin:auto;padding:32px 18px 48px}
+header{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:24px}
+h1{font-size:30px;margin:0 0 6px}.sub{color:var(--muted);font-size:14px}
+.badge{background:#eaf2ff;color:#175cd3;border-radius:999px;padding:8px 12px;font-size:13px;font-weight:700}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.stat,.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 2px 8px #1018280a}
+.stat{padding:18px}.label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.value{font-size:28px;font-weight:800;margin-top:7px}
+.table{overflow:hidden}.row{display:grid;grid-template-columns:1.5fr 1fr 1fr .9fr;gap:14px;padding:17px 20px;align-items:center;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}.head{font-size:12px;color:var(--muted);text-transform:uppercase;font-weight:700;background:#f9fafb}
+.company{font-weight:800}.price{font-size:23px;font-weight:800}.total{font-weight:700}.time{font-size:12px;color:var(--muted)}
+.best{color:var(--good)}.error{color:var(--bad)}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.note{margin-top:16px;color:var(--muted);font-size:12px;line-height:1.5}
+@media(max-width:720px){header{display:block}.badge{display:inline-block;margin-top:12px}.summary{grid-template-columns:1fr}.row{grid-template-columns:1.4fr .8fr .9fr;gap:8px}.row .source{display:none}.head .source{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<div><h1>06712 Heating Oil Dashboard</h1><div class="sub">100-gallon cash-price comparison</div></div>
+<div id="updated" class="badge">Loading…</div>
+</header>
+<section class="summary">
+<div class="stat"><div class="label">Best price / gallon</div><div id="best" class="value">—</div></div>
+<div class="stat"><div class="label">Best 100-gallon total</div><div id="bestTotal" class="value">—</div></div>
+<div class="stat"><div class="label">Spread</div><div id="spread" class="value">—</div></div>
+</section>
+<div class="card table">
+<div class="row head"><div>Supplier</div><div>Per gallon</div><div>100 gallons</div><div class="source">Source</div></div>
+<div id="rows"></div>
+</div>
+<div class="note">
+Prices are informational only. Verify the current quote, payment method, delivery timing,
+and ZIP-specific eligibility with the supplier before ordering. The dashboard does not
+place orders. Data is collected approximately every 6 hours.
+</div>
+</div>
+<script>
+fetch('data/prices.json?'+Date.now()).then(r=>r.json()).then(d=>{
+ const rows=d.sources||[];
+ const valid=rows.filter(x=>typeof x.price_per_gallon==='number');
+ const best=valid.length?Math.min(...valid.map(x=>x.price_per_gallon)):null;
+ const worst=valid.length?Math.max(...valid.map(x=>x.price_per_gallon)):null;
+ document.getElementById('updated').textContent=d.updated_at ? 'Updated '+new Date(d.updated_at).toLocaleString() : 'No update yet';
+ document.getElementById('best').textContent=best==null?'—':'$'+best.toFixed(3);
+ document.getElementById('bestTotal').textContent=best==null?'—':'$'+(best*100).toFixed(2);
+ document.getElementById('spread').textContent=(best==null||worst==null)?'—':'$'+(worst-best).toFixed(3);
+ const box=document.getElementById('rows');
+ box.innerHTML=rows.map(x=>{
+   const ok=typeof x.price_per_gallon==='number';
+   return `<div class="row">
+    <div><div class="company">${x.name}</div><div class="time">${x.note||''}</div></div>
+    <div class="${ok&&x.price_per_gallon===best?'best':''} price">${ok?'$'+x.price_per_gallon.toFixed(3):'<span class="error">Unavailable</span>'}</div>
+    <div class="total">${ok?'$'+(x.price_per_gallon*100).toFixed(2):'—'}</div>
+    <div class="source">${x.url?`<a href="${x.url}" target="_blank" rel="noopener">Website ↗</a>`:''}</div>
+   </div>`;
+ }).join('');
+}).catch(()=>{document.getElementById('updated').textContent='Could not load price data';});
+</script>
+</body>
+</html>
