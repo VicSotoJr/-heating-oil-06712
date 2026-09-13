@@ -1,7 +1,7 @@
 {
   "zip": "06712",
   "gallons": 100,
-  "updated_at": "2026-09-13T12:57:43.193655+00:00",
+  "updated_at": "2026-09-13T20:14:58.264534+00:00",
   "sources": [
     {
       "name": "First Fuel Oil",
@@ -11,15 +11,15 @@
     },
     {
       "name": "Phillips Oil & Propane",
-      "url": "https://phillipsoilllc.com/get-price/",
-      "price_per_gallon": null,
-      "note": "ZIP accepted, but no 100-gallon price was exposed"
+      "url": "https://phillipsoilllc.com/",
+      "price_per_gallon": 5.39,
+      "note": "Published 100-gallon price"
     },
     {
       "name": "Curtiss Oil",
       "url": "https://curtissoil.com/get-price/",
       "price_per_gallon": null,
-      "note": "ZIP accepted, but no 100-gallon price was exposed"
+      "note": "Update failed: TypeError: type NoneType doesn't define __round__ method"
     },
     {
       "name": "Incredible Oil & Propane",
