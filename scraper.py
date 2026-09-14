@@ -7,6 +7,7 @@ import requests
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
+
 ZIP = "06712"
 GALLONS = 100
 OUT = Path("data/prices.json")
@@ -15,10 +16,6 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; HeatingOil06712/1.0)"
 }
 
-
-# ---------------------------------------------------------
-# General helpers
-# ---------------------------------------------------------
 
 def get_html(url):
     response = requests.get(
@@ -35,14 +32,22 @@ def clean_text(value):
 
 
 # ---------------------------------------------------------
-# First Fuel
+# FIRST FUEL OIL
 # ---------------------------------------------------------
 
 def first_fuel():
-    html = get_html("https://www.firstfueloil.com/")
-    soup = BeautifulSoup(html, "html.parser")
+    html = get_html(
+        "https://www.firstfueloil.com/"
+    )
 
-    text = clean_text(soup.get_text(" ", strip=True))
+    soup = BeautifulSoup(
+        html,
+        "html.parser"
+    )
+
+    text = clean_text(
+        soup.get_text(" ", strip=True)
+    )
 
     patterns = [
         r"100\s*[-–—]\s*299\s*Gallons?.{0,150}?\$\s*(\d+\.\d{2,3})",
@@ -50,40 +55,62 @@ def first_fuel():
     ]
 
     for pattern in patterns:
-        match = re.search(pattern, text, re.I)
-        if match:
-            return float(match.group(1)), "Published 100-299 gallon price"
+        match = re.search(
+            pattern,
+            text,
+            re.I
+        )
 
-    raise RuntimeError("Could not find First Fuel price")
+        if match:
+            return (
+                float(match.group(1)),
+                "Published 100-299 gallon price"
+            )
+
+    raise RuntimeError(
+        "Could not find First Fuel 100-gallon price"
+    )
 
 
 # ---------------------------------------------------------
-# Phillips
+# PHILLIPS OIL
 # ---------------------------------------------------------
 
 def phillips():
-    html = get_html("https://phillipsoilllc.com/")
-    soup = BeautifulSoup(html, "html.parser")
+    html = get_html(
+        "https://phillipsoilllc.com/"
+    )
 
-    # Look through every table.
+    soup = BeautifulSoup(
+        html,
+        "html.parser"
+    )
+
     for table in soup.find_all("table"):
+
         rows = table.find_all("tr")
 
         for row in rows:
+
             cells = [
-                clean_text(cell.get_text(" ", strip=True))
-                for cell in row.find_all(["td", "th"])
+                clean_text(
+                    cell.get_text(
+                        " ",
+                        strip=True
+                    )
+                )
+                for cell in row.find_all(
+                    ["td", "th"]
+                )
             ]
 
             if not cells:
                 continue
 
-            # We want the row beginning with 100.
             if cells[0].strip() == "100":
 
-                # Expected:
-                # 100 | $5.390 | $539.00
                 for cell in cells[1:]:
+
                     match = re.search(
                         r"\$\s*(\d+\.\d{2,3})",
                         cell
@@ -101,8 +128,103 @@ def phillips():
 
 
 # ---------------------------------------------------------
-# Curtiss
+# CURTISS OIL
 # ---------------------------------------------------------
+
+def extract_curtiss_price_from_text(text):
+    """
+    Look specifically for the Curtiss '100+ gallons'
+    pricing tier.
+
+    We intentionally do NOT require an exact
+    '100 gallons' row because Curtiss uses
+    '100+ gallons'.
+    """
+
+    text = clean_text(text)
+
+    # Normalize common variations:
+    # 100+ gallons
+    # 100 + gallons
+    # 100+ gallon
+    # 100 + gallon
+    patterns = [
+
+        # Price immediately after 100+ gallons
+        r"100\s*\+\s*gallons?.{0,250}?\$\s*(\d+\.\d{2,3})",
+
+        # Price immediately before 100+ gallons
+        r"\$\s*(\d+\.\d{2,3}).{0,250}?100\s*\+\s*gallons?",
+
+        # Some pages may use "100+ gal"
+        r"100\s*\+\s*gal(?:lon)?s?.{0,250}?\$\s*(\d+\.\d{2,3})",
+
+        # Extra fallback for "100 +"
+        r"100\s*\+\s*.{0,150}?\$\s*(\d+\.\d{2,3})",
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(
+            pattern,
+            text,
+            re.I
+        )
+
+        if match:
+            return float(
+                match.group(1)
+            )
+
+    return None
+
+
+def extract_curtiss_price_from_page(page):
+    """
+    Search the main page and all frames for the
+    100+ gallons price.
+    """
+
+    # First search every frame's visible text.
+    for frame in page.frames:
+
+        try:
+            body = frame.locator(
+                "body"
+            ).inner_text(
+                timeout=5000
+            )
+
+            body = clean_text(body)
+
+            price = extract_curtiss_price_from_text(
+                body
+            )
+
+            if price is not None:
+                return price, body
+
+        except Exception:
+            continue
+
+    # Search HTML as an additional fallback.
+    for frame in page.frames:
+
+        try:
+            html = frame.content()
+
+            price = extract_curtiss_price_from_text(
+                clean_text(html)
+            )
+
+            if price is not None:
+                return price, clean_text(html)
+
+        except Exception:
+            continue
+
+    return None, ""
+
 
 def curtiss():
     url = "https://curtissoil.com/get-price/"
@@ -124,7 +246,44 @@ def curtiss():
             }
         )
 
+        # Keep track of network responses in case
+        # Curtiss loads pricing through an API.
+        network_responses = []
+
+        def handle_response(response):
+            try:
+                response_url = response.url.lower()
+
+                interesting_terms = [
+                    "price",
+                    "quote",
+                    "fuel",
+                    "product",
+                    "order",
+                    "api"
+                ]
+
+                if any(
+                    term in response_url
+                    for term in interesting_terms
+                ):
+                    network_responses.append(
+                        response
+                    )
+
+            except Exception:
+                pass
+
+        page.on(
+            "response",
+            handle_response
+        )
+
         try:
+
+            # -------------------------------------------------
+            # Load Curtiss quote page
+            # -------------------------------------------------
 
             page.goto(
                 url,
@@ -132,10 +291,12 @@ def curtiss():
                 timeout=60000
             )
 
-            page.wait_for_timeout(5000)
+            page.wait_for_timeout(
+                5000
+            )
 
             # -------------------------------------------------
-            # Find ZIP input
+            # Find ZIP field
             # -------------------------------------------------
 
             zip_selectors = [
@@ -149,19 +310,36 @@ def curtiss():
 
             for selector in zip_selectors:
 
-                locator = page.locator(selector)
+                try:
+                    locator = page.locator(
+                        selector
+                    )
 
-                if locator.count() > 0:
-                    zip_box = locator.first
-                    break
+                    if locator.count() > 0:
+
+                        zip_box = locator.first
+
+                        break
+
+                except Exception:
+                    continue
 
             if zip_box is None:
-                raise RuntimeError("ZIP input not found")
 
-            zip_box.fill(ZIP)
+                raise RuntimeError(
+                    "Curtiss ZIP input not found"
+                )
 
             # -------------------------------------------------
-            # Click Check Price
+            # Enter ZIP
+            # -------------------------------------------------
+
+            zip_box.fill(
+                ZIP
+            )
+
+            # -------------------------------------------------
+            # Find Check Price button
             # -------------------------------------------------
 
             check_selectors = [
@@ -175,136 +353,154 @@ def curtiss():
 
             for selector in check_selectors:
 
-                locator = page.locator(selector)
+                try:
+                    locator = page.locator(
+                        selector
+                    )
 
-                if locator.count() > 0:
-                    check_button = locator.first
-                    break
+                    if locator.count() > 0:
+
+                        check_button = locator.first
+
+                        break
+
+                except Exception:
+                    continue
 
             if check_button is None:
+
                 raise RuntimeError(
-                    "Check Price button not found"
+                    "Curtiss Check Price button not found"
                 )
+
+            # -------------------------------------------------
+            # Submit ZIP
+            # -------------------------------------------------
 
             check_button.click()
 
-            # Give the quote application time to update.
-            page.wait_for_timeout(8000)
-
-            # -------------------------------------------------
-            # Get all visible text
-            # -------------------------------------------------
-
-            body = page.locator("body").inner_text(
-                timeout=15000
+            # Give the quote application time to load.
+            page.wait_for_timeout(
+                10000
             )
 
-            body = clean_text(body)
-
             # -------------------------------------------------
-            # Try to find a 100-gallon row
+            # Search for "100+ gallons"
             # -------------------------------------------------
 
-            patterns = [
+            price, page_text = (
+                extract_curtiss_price_from_page(
+                    page
+                )
+            )
 
-                # 100 gallons $5.XX
-                r"\b100\s*(?:gallons?|gal)\b"
-                r".{0,200}?"
-                r"\$\s*(\d+\.\d{2,3})",
+            if price is not None:
 
-                # 100 - 199 gallons $5.XX
-                r"\b100\s*[-–—]\s*199\b"
-                r".{0,200}?"
-                r"\$\s*(\d+\.\d{2,3})",
+                browser.close()
 
-                # 100 - 299 gallons $5.XX
-                r"\b100\s*[-–—]\s*299\b"
-                r".{0,200}?"
-                r"\$\s*(\d+\.\d{2,3})",
-            ]
-
-            for pattern in patterns:
-
-                match = re.search(
-                    pattern,
-                    body,
-                    re.I
+                return (
+                    price,
+                    "ZIP-specific 100+ gallon price"
                 )
 
-                if match:
+            # -------------------------------------------------
+            # Network/API fallback
+            # -------------------------------------------------
 
-                    price = float(match.group(1))
+            for response in network_responses:
 
-                    browser.close()
+                try:
 
-                    return (
-                        price,
-                        "ZIP-specific 100-gallon price"
+                    content_type = (
+                        response.headers.get(
+                            "content-type",
+                            ""
+                        ).lower()
                     )
 
-            # -------------------------------------------------
-            # Look through HTML tables
-            # -------------------------------------------------
+                    if (
+                        "json" in content_type
+                        or "text" in content_type
+                        or "javascript" in content_type
+                        or "html" in content_type
+                    ):
 
-            for table in page.locator("table").all():
+                        response_text = (
+                            response.text()
+                        )
 
-                rows = table.locator("tr").all()
+                        price = (
+                            extract_curtiss_price_from_text(
+                                response_text
+                            )
+                        )
 
-                for row in rows:
+                        if price is not None:
 
-                    cells = row.locator(
-                        "th, td"
-                    ).all_inner_texts()
+                            browser.close()
 
-                    cells = [
-                        clean_text(x)
-                        for x in cells
-                    ]
-
-                    if not cells:
-                        continue
-
-                    if cells[0] == "100":
-
-                        for cell in cells[1:]:
-
-                            match = re.search(
-                                r"\$\s*(\d+\.\d{2,3})",
-                                cell
+                            return (
+                                price,
+                                "ZIP-specific 100+ gallon price"
                             )
 
-                            if match:
-
-                                price = float(
-                                    match.group(1)
-                                )
-
-                                browser.close()
-
-                                return (
-                                    price,
-                                    "ZIP-specific 100-gallon price"
-                                )
+                except Exception:
+                    continue
 
             # -------------------------------------------------
-            # Diagnostic information
+            # Diagnostic output
             # -------------------------------------------------
 
             print(
                 "\n----- CURTISS PAGE TEXT -----\n"
             )
 
-            print(body[:12000])
+            print(
+                page_text[:15000]
+            )
 
             print(
                 "\n----- END CURTISS PAGE TEXT -----\n"
+            )
+
+            print(
+                "\n----- CURTISS FRAMES -----\n"
+            )
+
+            for index, frame in enumerate(
+                page.frames
+            ):
+
+                try:
+
+                    frame_text = frame.locator(
+                        "body"
+                    ).inner_text(
+                        timeout=3000
+                    )
+
+                    print(
+                        f"\n--- FRAME {index} ---\n"
+                    )
+
+                    print(
+                        clean_text(
+                            frame_text
+                        )[:5000]
+                    )
+
+                except Exception:
+                    pass
+
+            print(
+                "\n----- END CURTISS FRAMES -----\n"
             )
 
             browser.close()
 
             return (
                 None,
-                "ZIP accepted, but 100-gallon price was not found"
+                "ZIP accepted, but Curtiss 100+ gallon price was not found. Check the Actions log for the Curtiss page/frame text."
             )
 
         except Exception as error:
@@ -319,12 +515,12 @@ def curtiss():
                 "Curtiss quote failed: "
                 + type(error).__name__
                 + ": "
-                + str(error)[:200]
+                + str(error)[:250]
             )
 
 
 # ---------------------------------------------------------
-# Incredible Oil
+# INCREDIBLE OIL
 # ---------------------------------------------------------
 
 def incredible_oil():
@@ -332,10 +528,16 @@ def incredible_oil():
         "https://www.incredibleoil.com/home-heating-oil/"
     )
 
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(
+        html,
+        "html.parser"
+    )
 
     text = clean_text(
-        soup.get_text(" ", strip=True)
+        soup.get_text(
+            " ",
+            strip=True
+        )
     )
 
     patterns = [
@@ -352,18 +554,19 @@ def incredible_oil():
         )
 
         if match:
+
             return (
                 float(match.group(1)),
                 "Published 100-299 gallon price"
             )
 
     raise RuntimeError(
-        "Could not find Incredible Oil price"
+        "Could not find Incredible Oil 100-gallon price"
     )
 
 
 # ---------------------------------------------------------
-# Supplier wrapper
+# SUPPLIER RUNNER
 # ---------------------------------------------------------
 
 def run_supplier(
@@ -383,10 +586,16 @@ def run_supplier(
 
         price, note = function()
 
-        result["price_per_gallon"] = round(
-            price,
-            3
-        )
+        # Important:
+        # Curtiss may return None when it cannot find
+        # the price. Do NOT call round(None, 3).
+
+        if price is not None:
+
+            result["price_per_gallon"] = round(
+                price,
+                3
+            )
 
         result["note"] = note
 
@@ -396,14 +605,14 @@ def run_supplier(
             "Update failed: "
             + type(error).__name__
             + ": "
-            + str(error)[:200]
+            + str(error)[:250]
         )
 
     return result
 
 
 # ---------------------------------------------------------
-# Main
+# MAIN
 # ---------------------------------------------------------
 
 def main():
