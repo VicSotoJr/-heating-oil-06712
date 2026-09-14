@@ -1,7 +1,7 @@
 {
   "zip": "06712",
   "gallons": 100,
-  "updated_at": "2026-09-14T15:08:38.859725+00:00",
+  "updated_at": "2026-09-14T15:27:26.074622+00:00",
   "sources": [
     {
       "name": "First Fuel Oil",
@@ -26,6 +26,18 @@
       "url": "https://www.incredibleoil.com/home-heating-oil/",
       "price_per_gallon": 5.49,
       "note": "Published 100-299 gallon price"
+    },
+    {
+      "name": "Anytime Oil",
+      "url": "https://anytime-oil.com/get-price/",
+      "price_per_gallon": null,
+      "note": "ZIP accepted, but 100+ gallon price was not found. Check the Actions log."
+    },
+    {
+      "name": "Right Energy",
+      "url": "https://www.rightenergyct.com/get-price/",
+      "price_per_gallon": null,
+      "note": "ZIP accepted, but 100+ gallon price was not found. Check the Actions log."
     }
   ]
 }
