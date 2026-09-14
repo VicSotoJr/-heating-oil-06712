@@ -1,7 +1,7 @@
 {
   "zip": "06712",
   "gallons": 100,
-  "updated_at": "2026-09-14T15:27:26.074622+00:00",
+  "updated_at": "2026-09-14T18:38:47.410903+00:00",
   "sources": [
     {
       "name": "First Fuel Oil",
@@ -30,14 +30,14 @@
     {
       "name": "Anytime Oil",
       "url": "https://anytime-oil.com/get-price/",
-      "price_per_gallon": null,
-      "note": "ZIP accepted, but 100+ gallon price was not found. Check the Actions log."
+      "price_per_gallon": 5.55,
+      "note": "ZIP-specific 100-149 gallon price"
     },
     {
       "name": "Right Energy",
       "url": "https://www.rightenergyct.com/get-price/",
-      "price_per_gallon": null,
-      "note": "ZIP accepted, but 100+ gallon price was not found. Check the Actions log."
+      "price_per_gallon": 5.49,
+      "note": "ZIP-specific 100-149 gallon price"
     }
   ]
 }
