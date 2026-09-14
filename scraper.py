@@ -95,6 +95,40 @@ def phillips():
         "Could not find Phillips 100-gallon price"
     )
 # =========================================================
+# GENERIC 100-149 GALLON PRICE EXTRACTION
+# =========================================================
+def extract_100_149_price(text):
+    """
+    Look for a price associated with a 100-149 gallon tier.
+    Handles variations such as:
+        100-149 gallons
+        100 - 149 gallons
+        100-149 gal
+        100 to 149 gallons
+    """
+    text = clean_text(text)
+    patterns = [
+        # 100-149 gallons -> price
+        r"100\s*[-–—]\s*149\s*gallons?.{0,300}?\$\s*(\d+\.\d{2,3})",
+        # Price -> 100-149 gallons
+        r"\$\s*(\d+\.\d{2,3}).{0,300}?100\s*[-–—]\s*149\s*gallons?",
+        # 100-149 gal -> price
+        r"100\s*[-–—]\s*149\s*gal(?:lon)?s?.{0,300}?\$\s*(\d+\.\d{2,3})",
+        # 100 to 149 gallons
+        r"100\s+(?:to|through)\s+149\s+gallons?.{0,300}?\$\s*(\d+\.\d{2,3})",
+    ]
+    for pattern in patterns:
+        match = re.search(
+            pattern,
+            text,
+            re.I
+        )
+        if match:
+            return float(
+                match.group(1)
+            )
+    return None
+# =========================================================
 # GENERIC 100+ GALLON PRICE EXTRACTION
 # =========================================================
 def extract_100_plus_price(text):
@@ -141,7 +175,7 @@ def quote_page_100_plus(
 ):
     """
     Enter ZIP code into a supplier's online quote page
-    and find the 100+ gallon price.
+    and find pricing (tries 100-149 first, then 100+).
     This does NOT proceed into tank settings,
     checkout, payment, or ordering.
     """
@@ -278,6 +312,17 @@ def quote_page_100_plus(
                         diagnostic_text.append(
                             body
                         )
+                    # Try 100-149 first
+                    price = extract_100_149_price(
+                        body
+                    )
+                    if price is not None:
+                        browser.close()
+                        return (
+                            price,
+                            "ZIP-specific 100-149 gallon price"
+                        )
+                    # Fall back to 100+
                     price = extract_100_plus_price(
                         body
                     )
@@ -298,6 +343,17 @@ def quote_page_100_plus(
                     html_text = clean_text(
                         html
                     )
+                    # Try 100-149 first
+                    price = extract_100_149_price(
+                        html_text
+                    )
+                    if price is not None:
+                        browser.close()
+                        return (
+                            price,
+                            "ZIP-specific 100-149 gallon price"
+                        )
+                    # Fall back to 100+
                     price = extract_100_plus_price(
                         html_text
                     )
@@ -329,6 +385,17 @@ def quote_page_100_plus(
                         response_text = (
                             response.text()
                         )
+                        # Try 100-149 first
+                        price = extract_100_149_price(
+                            response_text
+                        )
+                        if price is not None:
+                            browser.close()
+                            return (
+                                price,
+                                "ZIP-specific 100-149 gallon price"
+                            )
+                        # Fall back to 100+
                         price = extract_100_plus_price(
                             response_text
                         )
@@ -356,12 +423,12 @@ def quote_page_100_plus(
                 f"\n----- END {supplier_name.upper()} PAGE TEXT -----\n"
             )
             print(
-                f"\n{supplier_name}: 100+ gallon price was not found."
+                f"\n{supplier_name}: Price was not found."
             )
             browser.close()
             return (
                 None,
-                "ZIP accepted, but 100+ gallon price was not found. Check the Actions log."
+                "ZIP accepted, but price was not found. Check the Actions log."
             )
         except Exception as error:
             try:
