@@ -1,18 +1,18 @@
 {
   "zip": "06712",
   "gallons": 100,
-  "updated_at": "2026-09-15T04:45:01.260559+00:00",
+  "updated_at": "2026-09-15T11:37:40.771267+00:00",
   "sources": [
     {
       "name": "First Fuel Oil",
       "url": "https://www.firstfueloil.com/",
-      "price_per_gallon": null,
-      "note": "Update failed: HTTPError: 403 Client Error: Forbidden for url: https://www.firstfueloil.com/"
+      "price_per_gallon": 5.39,
+      "note": "Published 100-299 gallon price"
     },
     {
       "name": "Phillips Oil & Propane",
       "url": "https://phillipsoilllc.com/",
-      "price_per_gallon": 5.49,
+      "price_per_gallon": 5.59,
       "note": "Published 100-gallon price"
     },
     {
@@ -30,13 +30,13 @@
     {
       "name": "Anytime Oil",
       "url": "https://anytime-oil.com/get-price/",
-      "price_per_gallon": 5.55,
+      "price_per_gallon": 5.59,
       "note": "ZIP-specific 100-149 gallon price"
     },
     {
       "name": "Right Energy",
       "url": "https://www.rightenergyct.com/get-price/",
-      "price_per_gallon": 5.49,
+      "price_per_gallon": 5.55,
       "note": "ZIP-specific 100-149 gallon price"
     }
   ]
