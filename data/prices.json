@@ -1,67 +1,168 @@
 {
   "zip": "06712",
   "gallons": 100,
-  "updated_at": "2026-09-15T15:57:47.730732+00:00",
+  "updated_at": "2026-09-15T16:58:12.929784+00:00",
   "sources": [
-    {
-      "name": "First Fuel Oil",
-      "url": "https://www.firstfueloil.com/",
-      "price_per_gallon": 5.49,
-      "note": "Published 100-299 gallon price"
-    },
-    {
-      "name": "Phillips Oil & Propane",
-      "url": "https://phillipsoilllc.com/",
-      "price_per_gallon": 5.69,
-      "note": "Published 100-gallon price"
-    },
     {
       "name": "Curtiss Oil",
       "url": "https://curtissoil.com/get-price/",
       "price_per_gallon": 5.399,
+      "total_for_100_gallons": 539.9,
       "note": "ZIP-specific 100+ gallon price"
+    },
+    {
+      "name": "First Fuel Oil",
+      "url": "https://www.firstfueloil.com/",
+      "price_per_gallon": 5.49,
+      "total_for_100_gallons": 549.0,
+      "note": "Published 100-299 gallon price"
     },
     {
       "name": "Incredible Oil & Propane",
       "url": "https://www.incredibleoil.com/home-heating-oil/",
       "price_per_gallon": 5.49,
+      "total_for_100_gallons": 549.0,
       "note": "Published 100-299 gallon price"
+    },
+    {
+      "name": "GG Oil CT",
+      "url": "https://www.ggoilct.com/",
+      "price_per_gallon": 5.59,
+      "total_for_100_gallons": 559.0,
+      "note": "Published 100-gallon price"
     },
     {
       "name": "Anytime Oil",
       "url": "https://anytime-oil.com/get-price/",
       "price_per_gallon": 5.68,
+      "total_for_100_gallons": 568.0,
       "note": "ZIP-specific 100-149 gallon price"
+    },
+    {
+      "name": "Phillips Oil & Propane",
+      "url": "https://phillipsoilllc.com/",
+      "price_per_gallon": 5.69,
+      "total_for_100_gallons": 569.0,
+      "note": "Published 100-gallon price"
     },
     {
       "name": "Right Energy",
       "url": "https://www.rightenergyct.com/get-price/",
       "price_per_gallon": 5.69,
+      "total_for_100_gallons": 569.0,
       "note": "ZIP-specific 100-149 gallon price"
     },
     {
       "name": "Bethany Fuel",
       "url": "https://www.bethanyfuel.com/",
-      "price_per_gallon": null,
-      "note": "Bethany Fuel quote failed: RuntimeError: Bethany Fuel ZIP input not found"
+      "price_per_gallon": 5.69,
+      "total_for_100_gallons": 569.0,
+      "note": "Published 100-gallon price"
     },
     {
       "name": "FJ Boil",
       "url": "https://www.fjboil.com/",
       "price_per_gallon": null,
-      "note": "FJ Boil quote failed: RuntimeError: FJ Boil ZIP input not found"
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
     },
     {
       "name": "Easy Oil CT",
       "url": "https://www.easyoilct.com/",
       "price_per_gallon": null,
-      "note": "Easy Oil CT quote failed: RuntimeError: Easy Oil CT Check Price button not found"
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
     },
     {
-      "name": "GG Oil CT",
-      "url": "https://www.ggoilct.com/",
+      "name": "Belica Fuel",
+      "url": "https://belicafuel.com/",
       "price_per_gallon": null,
-      "note": "GG Oil CT quote failed: RuntimeError: GG Oil CT ZIP input not found"
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
+    },
+    {
+      "name": "Blue Flame Oil",
+      "url": "https://blueflameoil.com/",
+      "price_per_gallon": null,
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
+    },
+    {
+      "name": "Dime Oil",
+      "url": "https://dimeoil.com/",
+      "price_per_gallon": null,
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
+    },
+    {
+      "name": "Federal Oil",
+      "url": "https://federaloil.com/",
+      "price_per_gallon": null,
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
+    },
+    {
+      "name": "IT Energy",
+      "url": "https://itenergyct.com/",
+      "price_per_gallon": null,
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
+    },
+    {
+      "name": "Purple Fuels",
+      "url": "https://purplefuels.com/",
+      "price_per_gallon": null,
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
+    },
+    {
+      "name": "Omni Energy",
+      "url": "https://omnienergy.net/",
+      "price_per_gallon": null,
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
+    },
+    {
+      "name": "Baribault Fuel",
+      "url": "https://baribaultfuel.com/",
+      "price_per_gallon": null,
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
+    },
+    {
+      "name": "Brazos Oil",
+      "url": "https://brazosoil.com/",
+      "price_per_gallon": null,
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
+    },
+    {
+      "name": "Centsable Oil",
+      "url": "https://centsableoil.com/",
+      "price_per_gallon": null,
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
+    },
+    {
+      "name": "Eagle Oil Company",
+      "url": "https://eagleoilcompany.com/",
+      "price_per_gallon": null,
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
+    },
+    {
+      "name": "Oil Guy LLC",
+      "url": "https://oilguyllc.com/",
+      "price_per_gallon": null,
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
+    },
+    {
+      "name": "Premier Energy",
+      "url": "https://premierenergyct.com/",
+      "price_per_gallon": null,
+      "total_for_100_gallons": null,
+      "note": "ZIP accepted or page loaded, but 100+ gallon price was not found."
     }
   ]
 }
