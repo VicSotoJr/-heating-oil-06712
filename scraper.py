@@ -39,64 +39,38 @@ def clean_text(value):
     return re.sub(r"\s+", " ", value).strip()
 
 
-def extract_prices(text):
-    """
-    Return all dollar prices found in text.
+def soup_text(url):
+    html = get_html(url)
 
-    Example:
-        $3.499
-        $3.49
-        $5.25
-    """
-    if not text:
-        return []
-
-    matches = re.findall(
-        r"\$\s*(\d+\.\d{2,3})",
-        text
+    soup = BeautifulSoup(
+        html,
+        "html.parser"
     )
 
-    return [
-        float(value)
-        for value in matches
-    ]
+    return clean_text(
+        soup.get_text(
+            " ",
+            strip=True
+        )
+    )
 
 
 # =========================================================
-# 100-149 GALLON PRICE EXTRACTION
+# PRICE EXTRACTION HELPERS
 # =========================================================
 
 def extract_100_149_price(text):
-    """
-    Look for a price associated with a 100-149 gallon tier.
-    """
-
     text = clean_text(text)
 
     patterns = [
-
-        # 100-149 gallons -> price
         r"100\s*[-–—]\s*149\s*gallons?.{0,300}?\$\s*(\d+\.\d{2,3})",
-
-        # Price -> 100-149 gallons
         r"\$\s*(\d+\.\d{2,3}).{0,300}?100\s*[-–—]\s*149\s*gallons?",
-
-        # 100-149 gal -> price
         r"100\s*[-–—]\s*149\s*gal(?:lon)?s?.{0,300}?\$\s*(\d+\.\d{2,3})",
-
-        # 100 to 149 gallons
         r"100\s+(?:to|through)\s+149\s+gallons?.{0,300}?\$\s*(\d+\.\d{2,3})",
-
-        # 100-149 without the word gallons
-        r"100\s*[-–—]\s*149.{0,200}?\$\s*(\d+\.\d{2,3})",
     ]
 
     for pattern in patterns:
-        match = re.search(
-            pattern,
-            text,
-            re.I
-        )
+        match = re.search(pattern, text, re.I)
 
         if match:
             return float(match.group(1))
@@ -104,44 +78,38 @@ def extract_100_149_price(text):
     return None
 
 
-# =========================================================
-# 100+ GALLON PRICE EXTRACTION
-# =========================================================
+def extract_100_299_price(text):
+    text = clean_text(text)
+
+    patterns = [
+        r"100\s*[-–—]\s*299\s*gallons?.{0,300}?\$\s*(\d+\.\d{2,3})",
+        r"\$\s*(\d+\.\d{2,3}).{0,300}?100\s*[-–—]\s*299\s*gallons?",
+        r"100\s*[-–—]\s*299\s*gal(?:lon)?s?.{0,300}?\$\s*(\d+\.\d{2,3})",
+        r"100\s*[-–—]\s*299.{0,300}?\$\s*(\d+\.\d{2,3})",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text, re.I)
+
+        if match:
+            return float(match.group(1))
+
+    return None
+
 
 def extract_100_plus_price(text):
-    """
-    Look for a price associated with a 100+ gallon tier.
-    """
-
     text = clean_text(text)
 
     patterns = [
-
-        # 100+ gallons -> price
         r"100\s*\+\s*gallons?.{0,300}?\$\s*(\d+\.\d{2,3})",
-
-        # Price -> 100+ gallons
         r"\$\s*(\d+\.\d{2,3}).{0,300}?100\s*\+\s*gallons?",
-
-        # 100+ gal -> price
         r"100\s*\+\s*gal(?:lon)?s?.{0,300}?\$\s*(\d+\.\d{2,3})",
-
-        # 100 gallons and more
         r"100\s+gallons?\s+(?:and|or)\s+(?:more|over).{0,300}?\$\s*(\d+\.\d{2,3})",
-
-        # 100 gallons or more
         r"100\s+gallons?.{0,100}?(?:or|and)\s+more.{0,300}?\$\s*(\d+\.\d{2,3})",
-
-        # General fallback
-        r"100\s*\+.{0,200}?\$\s*(\d+\.\d{2,3})",
     ]
 
     for pattern in patterns:
-        match = re.search(
-            pattern,
-            text,
-            re.I
-        )
+        match = re.search(pattern, text, re.I)
 
         if match:
             return float(match.group(1))
@@ -149,79 +117,21 @@ def extract_100_plus_price(text):
     return None
 
 
-# =========================================================
-# 100-GALLON PUBLISHED PRICE
-# =========================================================
-
-def extract_published_100_price(text):
-    """
-    Handles common published pricing such as:
-
-        100-299 Gallons $3.499
-        100-299 gallons: $3.49
-        100 Gallons $3.49
-    """
-
+def extract_100_gallon_price(text):
     text = clean_text(text)
 
     patterns = [
-
-        r"100\s*[-–—]\s*299\s*Gallons?.{0,200}?\$\s*(\d+\.\d{2,3})",
-
-        r"100\s*[-–—]\s*299.{0,200}?\$\s*(\d+\.\d{2,3})",
-
-        r"100\s*[-–—]\s*299.{0,200}?(\d+\.\d{2,3})\s*(?:per|/)?\s*gallon",
-
-        r"100\s+Gallons?.{0,150}?\$\s*(\d+\.\d{2,3})",
+        r"100\s*gallons?.{0,200}?\$\s*(\d+\.\d{2,3})",
+        r"\$\s*(\d+\.\d{2,3}).{0,200}?100\s*gallons?",
+        r"minimum\s+of\s+100\s*gallons?.{0,200}?\$\s*(\d+\.\d{2,3})",
+        r"minimum\s+100\s*gallons?.{0,200}?\$\s*(\d+\.\d{2,3})",
     ]
 
     for pattern in patterns:
-
-        match = re.search(
-            pattern,
-            text,
-            re.I
-        )
+        match = re.search(pattern, text, re.I)
 
         if match:
             return float(match.group(1))
-
-    return None
-
-
-# =========================================================
-# GENERIC PRICE FINDER
-# =========================================================
-
-def find_price_in_text(text):
-
-    # Best match first:
-    # 100-149
-    price = extract_100_149_price(text)
-
-    if price is not None:
-        return (
-            price,
-            "ZIP-specific 100-149 gallon price"
-        )
-
-    # Then 100+
-    price = extract_100_plus_price(text)
-
-    if price is not None:
-        return (
-            price,
-            "ZIP-specific 100+ gallon price"
-        )
-
-    # Then common published 100-299 pricing
-    price = extract_published_100_price(text)
-
-    if price is not None:
-        return (
-            price,
-            "Published 100-gallon price"
-        )
 
     return None
 
@@ -232,28 +142,24 @@ def find_price_in_text(text):
 
 def first_fuel():
 
-    html = get_html(
+    text = soup_text(
         "https://www.firstfueloil.com/"
     )
 
-    soup = BeautifulSoup(
-        html,
-        "html.parser"
-    )
-
-    text = clean_text(
-        soup.get_text(
-            " ",
-            strip=True
-        )
-    )
-
-    price = extract_published_100_price(text)
+    price = extract_100_299_price(text)
 
     if price is not None:
         return (
             price,
             "Published 100-299 gallon price"
+        )
+
+    price = extract_100_149_price(text)
+
+    if price is not None:
+        return (
+            price,
+            "Published 100-149 gallon price"
         )
 
     raise RuntimeError(
@@ -275,9 +181,6 @@ def phillips():
         html,
         "html.parser"
     )
-
-    # Check tables first because Phillips publishes
-    # pricing in a table.
 
     for table in soup.find_all("table"):
 
@@ -310,6 +213,7 @@ def phillips():
                     )
 
                     if match:
+
                         return (
                             float(match.group(1)),
                             "Published 100-gallon price"
@@ -322,10 +226,14 @@ def phillips():
         )
     )
 
-    price = find_price_in_text(text)
+    price = extract_100_299_price(text)
 
-    if price:
-        return price
+    if price is not None:
+
+        return (
+            price,
+            "Published 100-299 gallon price"
+        )
 
     raise RuntimeError(
         "Could not find Phillips 100-gallon price"
@@ -363,9 +271,7 @@ def curtiss():
 
             try:
 
-                response_url = (
-                    response.url.lower()
-                )
+                response_url = response.url.lower()
 
                 interesting_terms = [
                     "price",
@@ -380,6 +286,7 @@ def curtiss():
                     term in response_url
                     for term in interesting_terms
                 ):
+
                     network_responses.append(
                         response
                     )
@@ -400,13 +307,7 @@ def curtiss():
                 timeout=60000
             )
 
-            page.wait_for_timeout(
-                5000
-            )
-
-            # -------------------------------------------------
-            # ZIP INPUT
-            # -------------------------------------------------
+            page.wait_for_timeout(5000)
 
             zip_selectors = [
                 'input[name*="zip" i]',
@@ -421,9 +322,7 @@ def curtiss():
 
                 try:
 
-                    locator = page.locator(
-                        selector
-                    )
+                    locator = page.locator(selector)
 
                     if locator.count() > 0:
 
@@ -434,17 +333,12 @@ def curtiss():
                     continue
 
             if zip_box is None:
+
                 raise RuntimeError(
                     "Curtiss ZIP input not found"
                 )
 
-            zip_box.fill(
-                ZIP
-            )
-
-            # -------------------------------------------------
-            # CHECK PRICE
-            # -------------------------------------------------
+            zip_box.fill(ZIP)
 
             check_selectors = [
                 'button:has-text("Check Price")',
@@ -459,9 +353,7 @@ def curtiss():
 
                 try:
 
-                    locator = page.locator(
-                        selector
-                    )
+                    locator = page.locator(selector)
 
                     if locator.count() > 0:
 
@@ -472,19 +364,14 @@ def curtiss():
                     continue
 
             if check_button is None:
+
                 raise RuntimeError(
                     "Curtiss Check Price button not found"
                 )
 
             check_button.click()
 
-            page.wait_for_timeout(
-                10000
-            )
-
-            # -------------------------------------------------
-            # SEARCH ALL FRAMES
-            # -------------------------------------------------
+            page.wait_for_timeout(10000)
 
             page_text = ""
 
@@ -498,16 +385,12 @@ def curtiss():
                         timeout=5000
                     )
 
-                    body = clean_text(
-                        body
-                    )
+                    body = clean_text(body)
 
                     if body:
                         page_text += "\n" + body
 
-                    price = extract_100_plus_price(
-                        body
-                    )
+                    price = extract_100_plus_price(body)
 
                     if price is not None:
 
@@ -520,10 +403,6 @@ def curtiss():
 
                 except Exception:
                     continue
-
-            # -------------------------------------------------
-            # SEARCH HTML
-            # -------------------------------------------------
 
             for frame in page.frames:
 
@@ -547,10 +426,6 @@ def curtiss():
                 except Exception:
                     continue
 
-            # -------------------------------------------------
-            # NETWORK FALLBACK
-            # -------------------------------------------------
-
             for response in network_responses:
 
                 try:
@@ -569,9 +444,7 @@ def curtiss():
                         or "html" in content_type
                     ):
 
-                        response_text = (
-                            response.text()
-                        )
+                        response_text = response.text()
 
                         price = extract_100_plus_price(
                             response_text
@@ -593,9 +466,7 @@ def curtiss():
                 "\n----- CURTISS PAGE TEXT -----\n"
             )
 
-            print(
-                page_text[:15000]
-            )
+            print(page_text[:15000])
 
             print(
                 "\n----- END CURTISS PAGE TEXT -----\n"
@@ -605,7 +476,7 @@ def curtiss():
 
             return (
                 None,
-                "ZIP accepted, but Curtiss 100+ gallon price was not found. Check the Actions log."
+                "ZIP accepted, but Curtiss 100+ gallon price was not found."
             )
 
         except Exception as error:
@@ -625,55 +496,13 @@ def curtiss():
 
 
 # =========================================================
-# GENERIC PLAYWRIGHT QUOTE PAGE
+# GENERIC QUOTE PAGE
 # =========================================================
 
 def quote_page_100_plus(
     url,
     supplier_name
 ):
-
-    """
-    Generic ZIP-specific quote scraper.
-
-    Tries:
-      1. Supplied URL
-      2. /get-price/
-      3. /get-price
-      4. Homepage
-
-    Then attempts:
-      - ZIP input
-      - Check Price button
-      - Submit button
-      - Price button
-      - page text
-      - HTML
-      - network/API responses
-    """
-
-    candidate_urls = []
-
-    # Supplied URL first
-    candidate_urls.append(url)
-
-    # Add get-price variants
-    base = url.rstrip("/")
-
-    if "/get-price" not in base.lower():
-
-        candidate_urls.append(
-            base + "/get-price/"
-        )
-
-        candidate_urls.append(
-            base + "/get-price"
-        )
-
-    # Remove duplicates
-    candidate_urls = list(
-        dict.fromkeys(candidate_urls)
-    )
 
     with sync_playwright() as p:
 
@@ -698,9 +527,7 @@ def quote_page_100_plus(
 
             try:
 
-                response_url = (
-                    response.url.lower()
-                )
+                response_url = response.url.lower()
 
                 interesting_terms = [
                     "price",
@@ -733,204 +560,173 @@ def quote_page_100_plus(
 
         try:
 
-            for candidate_url in candidate_urls:
+            page.goto(
+                url,
+                wait_until="domcontentloaded",
+                timeout=60000
+            )
+
+            page.wait_for_timeout(5000)
+
+            zip_selectors = [
+                'input[name*="zip" i]',
+                'input[id*="zip" i]',
+                'input[placeholder*="zip" i]',
+                'input[aria-label*="zip" i]',
+                'input[name*="postal" i]',
+                'input[id*="postal" i]',
+            ]
+
+            zip_box = None
+
+            for selector in zip_selectors:
 
                 try:
 
-                    page.goto(
-                        candidate_url,
-                        wait_until="domcontentloaded",
-                        timeout=60000
-                    )
+                    locator = page.locator(selector)
 
-                    page.wait_for_timeout(
-                        5000
-                    )
+                    if locator.count() > 0:
 
-                    # -------------------------------------------------
-                    # LOOK FOR ZIP
-                    # -------------------------------------------------
+                        zip_box = locator.first
+                        break
 
-                    zip_selectors = [
-                        'input[name*="zip" i]',
-                        'input[id*="zip" i]',
-                        'input[placeholder*="zip" i]',
-                        'input[aria-label*="zip" i]',
-                        'input[name*="postal" i]',
-                        'input[id*="postal" i]',
-                    ]
-
-                    zip_box = None
-
-                    for selector in zip_selectors:
-
-                        try:
-
-                            locator = page.locator(
-                                selector
-                            )
-
-                            if locator.count() > 0:
-
-                                zip_box = locator.first
-                                break
-
-                        except Exception:
-                            continue
-
-                    # -------------------------------------------------
-                    # IF ZIP EXISTS, ENTER IT
-                    # -------------------------------------------------
-
-                    if zip_box is not None:
-
-                        try:
-
-                            zip_box.fill(
-                                ZIP
-                            )
-
-                        except Exception:
-
-                            continue
-
-                        # -------------------------------------------------
-                        # FIND SUBMIT BUTTON
-                        # -------------------------------------------------
-
-                        check_selectors = [
-
-                            'button:has-text("Check Price")',
-
-                            'button:has-text("Check price")',
-
-                            'button:has-text("Get Price")',
-
-                            'button:has-text("Get price")',
-
-                            'button:has-text("View Price")',
-
-                            'button:has-text("View price")',
-
-                            'button:has-text("Check")',
-
-                            'input[type="submit"]',
-
-                            'button:has-text("Price")',
-
-                        ]
-
-                        check_button = None
-
-                        for selector in check_selectors:
-
-                            try:
-
-                                locator = page.locator(
-                                    selector
-                                )
-
-                                if locator.count() > 0:
-
-                                    check_button = (
-                                        locator.first
-                                    )
-
-                                    break
-
-                            except Exception:
-                                continue
-
-                        if check_button is not None:
-
-                            try:
-
-                                check_button.click()
-
-                                page.wait_for_timeout(
-                                    10000
-                                )
-
-                            except Exception:
-                                pass
-
-                    # -------------------------------------------------
-                    # SEARCH PAGE + FRAMES
-                    # -------------------------------------------------
-
-                    for frame in page.frames:
-
-                        try:
-
-                            body = frame.locator(
-                                "body"
-                            ).inner_text(
-                                timeout=5000
-                            )
-
-                            body = clean_text(
-                                body
-                            )
-
-                            if body:
-
-                                diagnostic_text.append(
-                                    body
-                                )
-
-                            price = find_price_in_text(
-                                body
-                            )
-
-                            if price is not None:
-
-                                browser.close()
-
-                                return price
-
-                        except Exception:
-                            continue
-
-                    # -------------------------------------------------
-                    # SEARCH HTML
-                    # -------------------------------------------------
-
-                    for frame in page.frames:
-
-                        try:
-
-                            html = frame.content()
-
-                            html_text = clean_text(
-                                html
-                            )
-
-                            price = find_price_in_text(
-                                html_text
-                            )
-
-                            if price is not None:
-
-                                browser.close()
-
-                                return price
-
-                        except Exception:
-                            continue
-
-                except Exception as error:
-
-                    diagnostic_text.append(
-                        f"{candidate_url} failed: "
-                        f"{type(error).__name__}: "
-                        f"{str(error)[:250]}"
-                    )
-
+                except Exception:
                     continue
 
-            # ---------------------------------------------------------
-            # NETWORK/API FALLBACK
-            # ---------------------------------------------------------
+            if zip_box is None:
+
+                raise RuntimeError(
+                    f"{supplier_name} ZIP input not found"
+                )
+
+            zip_box.fill(ZIP)
+
+            check_selectors = [
+                'button:has-text("Check Price")',
+                'button:has-text("Check price")',
+                'button:has-text("Get Price")',
+                'button:has-text("Get price")',
+                'button:has-text("View Price")',
+                'button:has-text("View price")',
+                'button:has-text("Check")',
+                'input[type="submit"]',
+                'button:has-text("Price")',
+            ]
+
+            check_button = None
+
+            for selector in check_selectors:
+
+                try:
+
+                    locator = page.locator(selector)
+
+                    if locator.count() > 0:
+
+                        check_button = locator.first
+                        break
+
+                except Exception:
+                    continue
+
+            if check_button is not None:
+
+                try:
+
+                    check_button.click()
+
+                    page.wait_for_timeout(10000)
+
+                except Exception:
+                    pass
+
+            for frame in page.frames:
+
+                try:
+
+                    body = frame.locator(
+                        "body"
+                    ).inner_text(
+                        timeout=5000
+                    )
+
+                    body = clean_text(body)
+
+                    if body:
+                        diagnostic_text.append(body)
+
+                    price = extract_100_299_price(body)
+
+                    if price is not None:
+
+                        browser.close()
+
+                        return (
+                            price,
+                            "ZIP-specific 100-299 gallon price"
+                        )
+
+                    price = extract_100_149_price(body)
+
+                    if price is not None:
+
+                        browser.close()
+
+                        return (
+                            price,
+                            "ZIP-specific 100-149 gallon price"
+                        )
+
+                    price = extract_100_plus_price(body)
+
+                    if price is not None:
+
+                        browser.close()
+
+                        return (
+                            price,
+                            "ZIP-specific 100+ gallon price"
+                        )
+
+                except Exception:
+                    continue
+
+            for frame in page.frames:
+
+                try:
+
+                    html = frame.content()
+
+                    html_text = clean_text(html)
+
+                    price = extract_100_299_price(
+                        html_text
+                    )
+
+                    if price is not None:
+
+                        browser.close()
+
+                        return (
+                            price,
+                            "ZIP-specific 100-299 gallon price"
+                        )
+
+                    price = extract_100_plus_price(
+                        html_text
+                    )
+
+                    if price is not None:
+
+                        browser.close()
+
+                        return (
+                            price,
+                            "ZIP-specific 100+ gallon price"
+                        )
+
+                except Exception:
+                    continue
 
             for response in network_responses:
 
@@ -950,11 +746,9 @@ def quote_page_100_plus(
                         or "html" in content_type
                     ):
 
-                        response_text = (
-                            response.text()
-                        )
+                        response_text = response.text()
 
-                        price = find_price_in_text(
+                        price = extract_100_299_price(
                             response_text
                         )
 
@@ -962,25 +756,35 @@ def quote_page_100_plus(
 
                             browser.close()
 
-                            return price
+                            return (
+                                price,
+                                "ZIP-specific 100-299 gallon price"
+                            )
+
+                        price = extract_100_plus_price(
+                            response_text
+                        )
+
+                        if price is not None:
+
+                            browser.close()
+
+                            return (
+                                price,
+                                "ZIP-specific 100+ gallon price"
+                            )
 
                 except Exception:
                     continue
-
-            # ---------------------------------------------------------
-            # DIAGNOSTICS
-            # ---------------------------------------------------------
 
             print(
                 f"\n----- {supplier_name.upper()} PAGE TEXT -----\n"
             )
 
-            combined_text = "\n\n".join(
-                diagnostic_text
-            )
-
             print(
-                combined_text[:15000]
+                "\n\n".join(
+                    diagnostic_text
+                )[:15000]
             )
 
             print(
@@ -991,7 +795,7 @@ def quote_page_100_plus(
 
             return (
                 None,
-                "ZIP accepted or page loaded, but 100+ gallon price was not found."
+                "ZIP accepted, but price was not found."
             )
 
         except Exception as error:
@@ -1040,25 +844,11 @@ def right_energy():
 
 def incredible_oil():
 
-    html = get_html(
+    text = soup_text(
         "https://www.incredibleoil.com/home-heating-oil/"
     )
 
-    soup = BeautifulSoup(
-        html,
-        "html.parser"
-    )
-
-    text = clean_text(
-        soup.get_text(
-            " ",
-            strip=True
-        )
-    )
-
-    price = extract_published_100_price(
-        text
-    )
+    price = extract_100_299_price(text)
 
     if price is not None:
 
@@ -1090,26 +880,428 @@ def bethany_fuel():
 
 def fj_boil():
 
-    return quote_page_100_plus(
-        "https://www.fjboil.com/",
-        "FJ Boil"
-    )
+    url = "https://www.fjboil.com/get-price/"
+
+    with sync_playwright() as p:
+
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage"
+            ]
+        )
+
+        page = browser.new_page(
+            viewport={
+                "width": 1440,
+                "height": 1200
+            }
+        )
+
+        network_responses = []
+
+        def handle_response(response):
+
+            try:
+
+                response_url = response.url.lower()
+
+                if any(
+                    term in response_url
+                    for term in [
+                        "price",
+                        "quote",
+                        "fuel",
+                        "product",
+                        "order",
+                        "api",
+                        "ajax"
+                    ]
+                ):
+
+                    network_responses.append(response)
+
+            except Exception:
+                pass
+
+        page.on(
+            "response",
+            handle_response
+        )
+
+        diagnostic_text = []
+
+        try:
+
+            page.goto(
+                url,
+                wait_until="domcontentloaded",
+                timeout=60000
+            )
+
+            page.wait_for_timeout(5000)
+
+            # -------------------------------------------------
+            # SELECT HEATING OIL
+            # -------------------------------------------------
+
+            selected = False
+
+            select_locators = page.locator("select")
+
+            for i in range(
+                select_locators.count()
+            ):
+
+                select = select_locators.nth(i)
+
+                try:
+
+                    options = select.locator("option")
+
+                    for j in range(
+                        options.count()
+                    ):
+
+                        option_text = clean_text(
+                            options.nth(j).inner_text()
+                        )
+
+                        if "heating oil" in option_text.lower():
+
+                            try:
+
+                                select.select_option(
+                                    label=option_text
+                                )
+
+                                selected = True
+
+                                break
+
+                            except Exception:
+
+                                option_value = (
+                                    options.nth(j)
+                                    .get_attribute("value")
+                                )
+
+                                if option_value:
+
+                                    select.select_option(
+                                        value=option_value
+                                    )
+
+                                    selected = True
+                                    break
+
+                except Exception:
+                    continue
+
+                if selected:
+                    break
+
+            # -------------------------------------------------
+            # CUSTOM DROPDOWN FALLBACK
+            # -------------------------------------------------
+
+            if not selected:
+
+                try:
+
+                    combobox = page.locator(
+                        '[role="combobox"]'
+                    )
+
+                    for i in range(
+                        combobox.count()
+                    ):
+
+                        combo = combobox.nth(i)
+
+                        try:
+
+                            combo.click()
+
+                            page.wait_for_timeout(500)
+
+                            option = page.locator(
+                                '[role="option"]:has-text("Heating Oil")'
+                            )
+
+                            if option.count() > 0:
+
+                                option.first.click()
+
+                                selected = True
+                                break
+
+                        except Exception:
+                            continue
+
+                except Exception:
+                    pass
+
+            # -------------------------------------------------
+            # ZIP
+            # -------------------------------------------------
+
+            zip_selectors = [
+                'input[name*="zip" i]',
+                'input[id*="zip" i]',
+                'input[placeholder*="zip" i]',
+                'input[aria-label*="zip" i]',
+                'input[name*="postal" i]',
+                'input[id*="postal" i]',
+            ]
+
+            zip_box = None
+
+            for selector in zip_selectors:
+
+                try:
+
+                    locator = page.locator(selector)
+
+                    if locator.count() > 0:
+
+                        zip_box = locator.first
+                        break
+
+                except Exception:
+                    continue
+
+            if zip_box is None:
+
+                raise RuntimeError(
+                    "FJ Boil ZIP input not found"
+                )
+
+            zip_box.fill(ZIP)
+
+            # -------------------------------------------------
+            # GET PRICE
+            # -------------------------------------------------
+
+            button_selectors = [
+                'button:has-text("Get Price")',
+                'button:has-text("Get price")',
+                'button:has-text("Check Price")',
+                'button:has-text("Check price")',
+                'button:has-text("Check")',
+                'button:has-text("Price")',
+                'input[type="submit"]',
+            ]
+
+            price_button = None
+
+            for selector in button_selectors:
+
+                try:
+
+                    locator = page.locator(selector)
+
+                    if locator.count() > 0:
+
+                        price_button = locator.first
+                        break
+
+                except Exception:
+                    continue
+
+            if price_button is None:
+
+                raise RuntimeError(
+                    "FJ Boil Get Price button not found"
+                )
+
+            price_button.click()
+
+            page.wait_for_timeout(10000)
+
+            # -------------------------------------------------
+            # PAGE TEXT
+            # -------------------------------------------------
+
+            for frame in page.frames:
+
+                try:
+
+                    body = frame.locator(
+                        "body"
+                    ).inner_text(
+                        timeout=5000
+                    )
+
+                    body = clean_text(body)
+
+                    if body:
+                        diagnostic_text.append(body)
+
+                    price = extract_100_299_price(body)
+
+                    if price is not None:
+
+                        browser.close()
+
+                        return (
+                            price,
+                            "ZIP-specific 100-299 gallon price"
+                        )
+
+                except Exception:
+                    continue
+
+            # -------------------------------------------------
+            # HTML
+            # -------------------------------------------------
+
+            for frame in page.frames:
+
+                try:
+
+                    html = frame.content()
+
+                    html_text = clean_text(html)
+
+                    price = extract_100_299_price(
+                        html_text
+                    )
+
+                    if price is not None:
+
+                        browser.close()
+
+                        return (
+                            price,
+                            "ZIP-specific 100-299 gallon price"
+                        )
+
+                except Exception:
+                    continue
+
+            # -------------------------------------------------
+            # NETWORK
+            # -------------------------------------------------
+
+            for response in network_responses:
+
+                try:
+
+                    content_type = (
+                        response.headers.get(
+                            "content-type",
+                            ""
+                        ).lower()
+                    )
+
+                    if (
+                        "json" in content_type
+                        or "text" in content_type
+                        or "javascript" in content_type
+                        or "html" in content_type
+                    ):
+
+                        response_text = response.text()
+
+                        price = extract_100_299_price(
+                            response_text
+                        )
+
+                        if price is not None:
+
+                            browser.close()
+
+                            return (
+                                price,
+                                "ZIP-specific 100-299 gallon price"
+                            )
+
+                except Exception:
+                    continue
+
+            print(
+                "\n----- FJ BOIL PAGE TEXT -----\n"
+            )
+
+            print(
+                "\n\n".join(
+                    diagnostic_text
+                )[:15000]
+            )
+
+            print(
+                "\n----- END FJ BOIL PAGE TEXT -----\n"
+            )
+
+            browser.close()
+
+            return (
+                None,
+                "Heating Oil selected/ZIP entered, but 100-299 gallon price was not found."
+            )
+
+        except Exception as error:
+
+            try:
+                browser.close()
+            except Exception:
+                pass
+
+            return (
+                None,
+                "FJ Boil quote failed: "
+                + type(error).__name__
+                + ": "
+                + str(error)[:250]
+            )
 
 
 # =========================================================
-# EASY OIL CT
+# EASY OIL
 # =========================================================
 
 def easy_oil_ct():
 
-    return quote_page_100_plus(
-        "https://www.easyoilct.com/",
-        "Easy Oil CT"
+    text = soup_text(
+        "https://www.easyoilct.com/"
+    )
+
+    price = extract_100_299_price(text)
+
+    if price is not None:
+
+        return (
+            price,
+            "Published 100-299 gallon homepage price"
+        )
+
+    price = extract_100_plus_price(text)
+
+    if price is not None:
+
+        return (
+            price,
+            "Published 100+ gallon homepage price"
+        )
+
+    price = extract_100_gallon_price(text)
+
+    if price is not None:
+
+        return (
+            price,
+            "Published 100-gallon homepage price"
+        )
+
+    raise RuntimeError(
+        "Could not find Easy Oil homepage price"
     )
 
 
 # =========================================================
-# GG OIL CT
+# G&G OIL
 # =========================================================
 
 def gg_oil_ct():
@@ -1121,163 +1313,193 @@ def gg_oil_ct():
 
 
 # =========================================================
-# NEW SUPPLIERS
-# =========================================================
-
-
-# ---------------------------------------------------------
-# BELICA FUEL
-# ---------------------------------------------------------
-
-def belica_fuel():
-
-    return quote_page_100_plus(
-        "https://belicafuel.com/",
-        "Belica Fuel"
-    )
-
-
-# ---------------------------------------------------------
-# BLUE FLAME OIL
-# ---------------------------------------------------------
-
-def blue_flame_oil():
-
-    return quote_page_100_plus(
-        "https://blueflameoil.com/",
-        "Blue Flame Oil"
-    )
-
-
-# ---------------------------------------------------------
-# DIME OIL
-# ---------------------------------------------------------
-
-def dime_oil():
-
-    return quote_page_100_plus(
-        "https://dimeoil.com/",
-        "Dime Oil"
-    )
-
-
-# ---------------------------------------------------------
-# FEDERAL OIL
-# ---------------------------------------------------------
-
-def federal_oil():
-
-    return quote_page_100_plus(
-        "https://federaloil.com/",
-        "Federal Oil"
-    )
-
-
-# ---------------------------------------------------------
-# IT ENERGY
-# ---------------------------------------------------------
-
-def it_energy():
-
-    return quote_page_100_plus(
-        "https://itenergyct.com/",
-        "IT Energy"
-    )
-
-
-# ---------------------------------------------------------
-# PURPLE FUELS
-# ---------------------------------------------------------
-
-def purple_fuels():
-
-    return quote_page_100_plus(
-        "https://purplefuels.com/",
-        "Purple Fuels"
-    )
-
-
-# ---------------------------------------------------------
 # OMNI ENERGY
-# ---------------------------------------------------------
+# =========================================================
 
 def omni_energy():
 
-    return quote_page_100_plus(
-        "https://omnienergy.net/",
-        "Omni Energy"
+    text = soup_text(
+        "https://myomnienergy.com/"
+    )
+
+    price = extract_100_299_price(text)
+
+    if price is not None:
+
+        return (
+            price,
+            "Published 100-299 gallon homepage price"
+        )
+
+    price = extract_100_149_price(text)
+
+    if price is not None:
+
+        return (
+            price,
+            "Published 100-149 gallon homepage price"
+        )
+
+    price = extract_100_plus_price(text)
+
+    if price is not None:
+
+        return (
+            price,
+            "Published 100+ gallon homepage price"
+        )
+
+    price = extract_100_gallon_price(text)
+
+    if price is not None:
+
+        return (
+            price,
+            "Published 100-gallon homepage price"
+        )
+
+    raise RuntimeError(
+        "Could not find Omni Energy homepage price"
     )
 
 
-# ---------------------------------------------------------
-# BARIBAULT FUEL
-# ---------------------------------------------------------
+# =========================================================
+# PURPLE FUELS
+# =========================================================
 
-def baribault_fuel():
+def purple_fuels():
 
-    return quote_page_100_plus(
-        "https://baribaultfuel.com/",
-        "Baribault Fuel"
+    text = soup_text(
+        "https://www.purplefuels.com/"
+    )
+
+    price = extract_100_299_price(text)
+
+    if price is not None:
+
+        return (
+            price,
+            "Published 100-299 gallon homepage price"
+        )
+
+    raise RuntimeError(
+        "Could not find Purple Fuels 100-299 gallon homepage price"
     )
 
 
-# ---------------------------------------------------------
-# BRAZOS OIL
-# ---------------------------------------------------------
+# =========================================================
+# IT ENERGY
+# =========================================================
 
-def brazos_oil():
+def it_energy():
 
-    return quote_page_100_plus(
-        "https://brazosoil.com/",
-        "Brazos Oil"
+    text = soup_text(
+        "https://itenergyllc.com/"
+    )
+
+    patterns = [
+        r"(?:today'?s|day'?s)\s+price\s*:\s*\$\s*(\d+\.\d{2,3})",
+        r"(?:today'?s|day'?s)\s+price.{0,100}?\$\s*(\d+\.\d{2,3})",
+        r"\$\s*(\d+\.\d{2,3}).{0,100}?(?:minimum|100)\s*gallons?",
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(
+            pattern,
+            text,
+            re.I
+        )
+
+        if match:
+
+            return (
+                float(match.group(1)),
+                "Published homepage price; 100-gallon minimum"
+            )
+
+    price = extract_100_gallon_price(text)
+
+    if price is not None:
+
+        return (
+            price,
+            "Published 100-gallon minimum homepage price"
+        )
+
+    raise RuntimeError(
+        "Could not find IT Energy homepage price"
     )
 
 
-# ---------------------------------------------------------
-# CENTSABLE OIL
-# ---------------------------------------------------------
+# =========================================================
+# FEDERAL OIL
+# =========================================================
 
-def centsable_oil():
+def federal_oil():
 
-    return quote_page_100_plus(
-        "https://centsableoil.com/",
-        "Centsable Oil"
+    text = soup_text(
+        "https://federal-oil.com/"
+    )
+
+    patterns = [
+        r"Cash\s+Price\s*:\s*\$\s*(\d+\.\d{2,3})",
+        r"Cash\s+Price.{0,100}?\$\s*(\d+\.\d{2,3})",
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(
+            pattern,
+            text,
+            re.I
+        )
+
+        if match:
+
+            return (
+                float(match.group(1)),
+                "Published homepage cash price"
+            )
+
+    raise RuntimeError(
+        "Could not find Federal Oil homepage cash price"
     )
 
 
-# ---------------------------------------------------------
-# EAGLE OIL
-# ---------------------------------------------------------
+# =========================================================
+# DIME OIL
+# =========================================================
 
-def eagle_oil():
+def dime_oil():
 
-    return quote_page_100_plus(
-        "https://eagleoilcompany.com/",
-        "Eagle Oil Company"
+    text = soup_text(
+        "https://www.dimeoilco.com/"
     )
 
+    patterns = [
+        r"Today's\s+Price\s*:\s*\$\s*(\d+\.\d{2,3})",
+        r"Today'?s\s+Price.{0,100}?\$\s*(\d+\.\d{2,3})",
+        r"\$\s*(\d+\.\d{2,3}).{0,150}?Home\s+Heating\s+Oil\s+for\s+150\s+gallons?",
+    ]
 
-# ---------------------------------------------------------
-# OIL GUY
-# ---------------------------------------------------------
+    for pattern in patterns:
 
-def oil_guy():
+        match = re.search(
+            pattern,
+            text,
+            re.I
+        )
 
-    return quote_page_100_plus(
-        "https://oilguyllc.com/",
-        "Oil Guy LLC"
-    )
+        if match:
 
+            return (
+                float(match.group(1)),
+                "Published 150+ gallon homepage price"
+            )
 
-# ---------------------------------------------------------
-# PREMIER ENERGY
-# ---------------------------------------------------------
-
-def premier_energy():
-
-    return quote_page_100_plus(
-        "https://premierenergyct.com/",
-        "Premier Energy"
+    raise RuntimeError(
+        "Could not find Dime Oil homepage price"
     )
 
 
@@ -1292,17 +1514,11 @@ def run_supplier(
 ):
 
     result = {
-
         "name": name,
-
         "url": url,
-
         "price_per_gallon": None,
-
         "total_for_100_gallons": None,
-
         "note": "Unavailable"
-
     }
 
     try:
@@ -1342,10 +1558,6 @@ def run_supplier(
 def main():
 
     suppliers = [
-
-        # =====================================================
-        # EXISTING 10
-        # =====================================================
 
         run_supplier(
             "First Fuel Oil",
@@ -1391,7 +1603,7 @@ def main():
 
         run_supplier(
             "FJ Boil",
-            "https://www.fjboil.com/",
+            "https://www.fjboil.com/get-price/",
             fj_boil
         ),
 
@@ -1407,97 +1619,41 @@ def main():
             gg_oil_ct
         ),
 
-
-        # =====================================================
-        # ADDITIONAL PROSPECT SUPPLIERS
-        # =====================================================
-
-        run_supplier(
-            "Belica Fuel",
-            "https://belicafuel.com/",
-            belica_fuel
-        ),
-
-        run_supplier(
-            "Blue Flame Oil",
-            "https://blueflameoil.com/",
-            blue_flame_oil
-        ),
-
-        run_supplier(
-            "Dime Oil",
-            "https://dimeoil.com/",
-            dime_oil
-        ),
-
-        run_supplier(
-            "Federal Oil",
-            "https://federaloil.com/",
-            federal_oil
-        ),
-
-        run_supplier(
-            "IT Energy",
-            "https://itenergyct.com/",
-            it_energy
-        ),
-
-        run_supplier(
-            "Purple Fuels",
-            "https://purplefuels.com/",
-            purple_fuels
-        ),
-
         run_supplier(
             "Omni Energy",
-            "https://omnienergy.net/",
+            "https://myomnienergy.com/",
             omni_energy
         ),
 
         run_supplier(
-            "Baribault Fuel",
-            "https://baribaultfuel.com/",
-            baribault_fuel
+            "Purple Fuels",
+            "https://www.purplefuels.com/",
+            purple_fuels
         ),
 
         run_supplier(
-            "Brazos Oil",
-            "https://brazosoil.com/",
-            brazos_oil
+            "IT Energy",
+            "https://itenergyllc.com/",
+            it_energy
         ),
 
         run_supplier(
-            "Centsable Oil",
-            "https://centsableoil.com/",
-            centsable_oil
+            "Federal Oil",
+            "https://federal-oil.com/",
+            federal_oil
         ),
 
         run_supplier(
-            "Eagle Oil Company",
-            "https://eagleoilcompany.com/",
-            eagle_oil
-        ),
-
-        run_supplier(
-            "Oil Guy LLC",
-            "https://oilguyllc.com/",
-            oil_guy
-        ),
-
-        run_supplier(
-            "Premier Energy",
-            "https://premierenergyct.com/",
-            premier_energy
+            "Dime Oil",
+            "https://www.dimeoilco.com/",
+            dime_oil
         ),
     ]
 
 
     # =========================================================
-    # SORT RESULTS
+    # SORT CHEAPEST FIRST
     # =========================================================
-
-    # Cheapest available prices first.
-    # Suppliers without a price go to the bottom.
 
     suppliers.sort(
         key=lambda x: (
@@ -1514,15 +1670,11 @@ def main():
     # =========================================================
 
     output = {
-
         "zip": ZIP,
-
         "gallons": GALLONS,
-
         "updated_at": datetime.now(
             timezone.utc
         ).isoformat(),
-
         "sources": suppliers
     }
 
