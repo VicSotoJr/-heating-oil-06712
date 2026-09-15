@@ -1,13 +1,13 @@
 {
   "zip": "06712",
   "gallons": 100,
-  "updated_at": "2026-09-14T21:46:12.421813+00:00",
+  "updated_at": "2026-09-15T04:45:01.260559+00:00",
   "sources": [
     {
       "name": "First Fuel Oil",
       "url": "https://www.firstfueloil.com/",
-      "price_per_gallon": 5.39,
-      "note": "Published 100-299 gallon price"
+      "price_per_gallon": null,
+      "note": "Update failed: HTTPError: 403 Client Error: Forbidden for url: https://www.firstfueloil.com/"
     },
     {
       "name": "Phillips Oil & Propane",
