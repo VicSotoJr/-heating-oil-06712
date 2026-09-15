@@ -714,6 +714,38 @@ def incredible_oil():
         "Could not find Incredible Oil 100-gallon price"
     )
 # =========================================================
+# BETHANY FUEL
+# =========================================================
+def bethany_fuel():
+    return quote_page_100_plus(
+        "https://www.bethanyfuel.com/",
+        "Bethany Fuel"
+    )
+# =========================================================
+# FJ BOIL
+# =========================================================
+def fj_boil():
+    return quote_page_100_plus(
+        "https://www.fjboil.com/",
+        "FJ Boil"
+    )
+# =========================================================
+# EASY OIL CT
+# =========================================================
+def easy_oil_ct():
+    return quote_page_100_plus(
+        "https://www.easyoilct.com/",
+        "Easy Oil CT"
+    )
+# =========================================================
+# GG OIL CT
+# =========================================================
+def gg_oil_ct():
+    return quote_page_100_plus(
+        "https://www.ggoilct.com/",
+        "GG Oil CT"
+    )
+# =========================================================
 # SUPPLIER RUNNER
 # =========================================================
 def run_supplier(
@@ -784,6 +816,30 @@ def main():
             "Right Energy",
             "https://www.rightenergyct.com/get-price/",
             right_energy
+        ),
+        # 7
+        run_supplier(
+            "Bethany Fuel",
+            "https://www.bethanyfuel.com/",
+            bethany_fuel
+        ),
+        # 8
+        run_supplier(
+            "FJ Boil",
+            "https://www.fjboil.com/",
+            fj_boil
+        ),
+        # 9
+        run_supplier(
+            "Easy Oil CT",
+            "https://www.easyoilct.com/",
+            easy_oil_ct
+        ),
+        # 10
+        run_supplier(
+            "GG Oil CT",
+            "https://www.ggoilct.com/",
+            gg_oil_ct
         ),
     ]
     output = {
